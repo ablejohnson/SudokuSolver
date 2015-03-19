@@ -16,6 +16,8 @@
  */
 package sudokusolver;
 
+import java.util.TreeSet;
+
 /**
  *
  * @author Able Johnson
@@ -24,6 +26,15 @@ package sudokusolver;
 public class SudokuException extends Throwable {
     int[][] sudoku;
     int SolvedCells;
+    TreeSet<Integer>[][] possibleValues;
+
+    public TreeSet<Integer>[][] getPossibleValues() {
+        return possibleValues;
+    }
+
+    public void setPossibleValues(TreeSet<Integer>[][] possibleValues) {
+        this.possibleValues = possibleValues;
+    }
 
     public int[][] getSudoku() {
         return sudoku;
@@ -42,6 +53,14 @@ public class SudokuException extends Throwable {
     }
     public SudokuException(String msg) {
         super(msg);
+    }
+    public void printPossibilities() {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                System.out.printf("%20s  ", possibleValues[i][j]);
+            }
+                    System.out.println();
+        }
     }
 
 }

@@ -29,8 +29,8 @@ import sudokusolver.SudokuException;
  */
 public class testSudoku {
 
-    static String[] fileNames = {"puzzle_hard.txt", "puzzle1.txt", "puzzle2.txt",};
-
+   static String[] fileNames = {"puzzle_hard.txt", "puzzle1.txt", "puzzle2.txt","puzzle4.txt"};
+   //static String[] fileNames = {"puzzle1.txt"};
     public static void main(String[] args) {
         for (String fileName : fileNames) {
             
@@ -38,9 +38,11 @@ public class testSudoku {
             try {
                 System.out.println("=======================" + fileName + "==============================");
                 sudoku.getPuzzle((new File(".").getCanonicalPath())+"/src/testSudoku/"+fileName);
-                sudoku.solvePuzzle();
+                //sudoku.fillPossibles();
+                //sudoku.printPossibilities();
+                sudoku.solve();
                 sudoku.printPuzzle();
-            } catch (SudokuException ex) {
+           } catch (SudokuException ex) {
                 System.out.println(ex.getMessage());
                 System.out.println("--------Current Status-----");
                 for (int i = 0; i < 9; i++) {
@@ -50,9 +52,10 @@ public class testSudoku {
                     }
                     System.out.println();
                 }
-
+                 ex.printPossibilities();
             } catch (Exception ex) {
                 Logger.getLogger(testSudoku.class.getName()).log(Level.SEVERE, null, ex);
+                sudoku.fillPossibles();
             }
         }
     }

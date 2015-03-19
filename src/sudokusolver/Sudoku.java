@@ -33,6 +33,7 @@ public class Sudoku {
     String data;
     int solvedCells;
     boolean changed = true;
+    boolean reducedBoxPair=true;
 
     public Sudoku() {
         this.solvedCells = 0;
@@ -50,79 +51,153 @@ public class Sudoku {
         return (solvedCells == 81);
     }
 
-    public void solvePuzzle() throws Exception, SudokuException {
+    public void solveNakedSingle(int x, int y) {
+        if (possibleValues[x][y].size() == 1) {
+            sudoku[x][y] = possibleValues[x][y].first();
+            possibleValues[x][y].clear(); //remove this line for more performance but more memory
+            removePossibleValue(x, y, sudoku[x][y]);
+            changed = true;
+            solvedCells++;
+            //System.out.println("----------------------single possibility--------------------");
+            //printPuzzle();
+        }
+    }
+
+    public void SolveHiddenSingle(int x, int y) {
+
+        TreeSet<Integer> tempPossible = new TreeSet<>();
+        tempPossible.addAll(possibleValues[x][y]);
+        for (Integer k : tempPossible) {
+            if (isPossibleHereOnly(x, y, k)) {
+                sudoku[x][y] = k;
+                possibleValues[x][y].clear(); //remove this line for more performance but more memory
+                removePossibleValue(x, y, k);
+                changed = true;
+                solvedCells++;
+                // System.out.println("---------------------hereonly---------------------");
+                //printPuzzle();
+                break;
+            }
+        }
+    }
+
+    public void printPossibilities() {
+        for (int i = 0; i < 9; i++) {
+            for (int j = 0; j < 9; j++) {
+                System.out.printf("%20s  ", possibleValues[i][j]);
+            }
+                    System.out.println();
+        }
+    }
+
+    private void printBeforeReduce(int box, int value) {
+
+    }
+
+    private void ReduceBoxPairs(int x, int y, int num, boolean inRow) {
+        int xSection = x / 3;
+        int ySection = y / 3;
+        int[] box = new int[2];
+        if (inRow) {
+            for (int i = 0, j = 0; i < 9 && j < 2; i++) {
+                if (possibleValues[i][y].contains(num)) {
+                    box[j++] = i;
+                }
+            }
+        } else {
+            for (int i = 0, j = 0; i < 9 && j < 2; i++) {
+                if (possibleValues[x][i].contains(num)) {
+                    box[j++] = i;
+                }
+            }
+        }
+        if (box[0] / 3 == box[1] / 3) {
+            if (inRow) {
+                xSection = box[0] / 3;
+            } else {
+                ySection = box[0] / 3;
+            }
+            //System.out.println("----------------------Reducing pair-----------------");
+            //System.out.println("xSectior=" + xSection + " YSection=" + ySection + " Number=" + num+" x="+x+" y="+y+"inRow"+inRow);
+            //printPossibilities();
+            for (int b = 3 * xSection; b < 3 * xSection + 3; b++) {
+                for (int boxY = 3 * ySection; boxY < 3 * ySection + 3; boxY++) {
+                    if ((inRow && boxY == y) || (!inRow && b == x)) {
+                        continue;
+                    }
+                    if(possibleValues[b][boxY].remove(num))
+                        reducedBoxPair=true;
+                }
+
+            }
+            //System.out.println("----------------------After Reduce-----------------");
+            //printPossibilities();
+            //System.out.println("---------------------------------------------------");
+            
+        }
+    }
+
+    public boolean solvePuzzleWithoutBacktrack() {
         fillPossibles();
-        while (!isCompleate() && changed) {
+        while (!isCompleate() && (changed||reducedBoxPair)) {
             changed = false;
+            reducedBoxPair=false;
             for (int i = 0; i < 9; i++) {
                 for (int j = 0; j < 9; j++) {
                     if (sudoku[i][j] != 0) {
                         continue;
                     }
                     if (possibleValues[i][j].isEmpty()) {
-                        throw new Exception("The Puzzle is Invalid");
+                        return false;
                     }
-                    if (possibleValues[i][j].size() == 1) {
-                        sudoku[i][j] = possibleValues[i][j].first();
-                        possibleValues[i][j].clear(); //remove this line for more performance but more memory
-                        removePossibleValue(i, j, sudoku[i][j]);
-                        changed = true;
-                        solvedCells++;
-                        //System.out.println("----------------------single possibility--------------------");
-                        //printPuzzle();
-                    } else {
-                        TreeSet<Integer> tempPossible = new TreeSet<>();
-                        tempPossible.addAll(possibleValues[i][j]);
-                        for (Integer k : tempPossible) {
-                            if (isPossibleHereOnly(i, j, k)) {
-                                sudoku[i][j] = k;
-                                possibleValues[i][j].clear(); //remove this line for more performance but more memory
-                                removePossibleValue(i, j, k);
-                                changed = true;
-                                solvedCells++;
-                                // System.out.println("---------------------hereonly---------------------");
-                                //printPuzzle();
-                                break;
-                            }
-                        }
-
-                    }
+                    solveNakedSingle(i, j);
+                    SolveHiddenSingle(i, j);
 
                 }
             }
 
         }
-        if (solvedCells < 81) {
-            //ToDo Need a better methode to solve this puzzle or this puzzle has more than 
-            SudokuException e=new SudokuException("The puzzle need to be solved using BackTracking");
-            e.setSudoku(sudoku);
-            e.setSolvedCells(solvedCells);
-            throw e;
-        }
+        return solvedCells >= 81;
+    }
 
+    
+    public void solve() throws SudokuException {
+        if (!solvePuzzleWithoutBacktrack()) {
+            SudokuException ex = new SudokuException("We are unable to solve this puzzle");
+            ex.setSolvedCells(solvedCells);
+            ex.setSudoku(sudoku);
+            ex.setPossibleValues(possibleValues);
+            throw ex;
+        }
     }
 
     private boolean isPossibleHereOnly(int x, int y, int num) {
         int xSection = x / 3;
         int ySection = y / 3;
-        int found = 0;
 
-        for (int row = 0; row < possibleValues.length && found < 2; row++) {
+        int found = 0;
+        for (int col = 0; col < possibleValues.length; col++) {
+            if (possibleValues[x][col].contains(num)) {
+                found++;
+            }
+        }
+        
+        if (found == 1) {
+            return true;
+        } else if (found == 2) {
+            ReduceBoxPairs(x, y, num, false);
+        }
+        found = 0;
+
+        for (int row = 0; row < possibleValues.length ; row++) {
             if (possibleValues[row][y].contains(num)) {
                 found++;
             }
         }
         if (found == 1) {
             return true;
-        }
-        found = 0;
-        for (int col = 0; col < possibleValues.length && found < 2; col++) {
-            if (possibleValues[x][col].contains(num)) {
-                found++;
-            }
-        }
-        if (found == 1) {
-            return true;
+        } else if (found == 2) {
+            ReduceBoxPairs(x, y, num, true);
         }
         found = 0;
         for (int box = 3 * xSection; (box < 3 * xSection + 3) && (found < 2); box++) {
@@ -215,19 +290,14 @@ public class Sudoku {
     }
 
     private int xPosition(int x, int y) {
-        if (x < 8) {
-            return x + 1;
-        } else {
-            return 0;
+        if (y == 8) {
+            return (x + 1);
         }
+        return x;
     }
 
     private int yPosition(int x, int y) {
-        if (x < 8) {
-            return y;
-        } else {
-            return y + 1;
-        }
+        return (y + 1) % 9;
     }
 
     /* private boolean solvePuzzle(int x, int y) {
